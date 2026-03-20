@@ -1,6 +1,10 @@
 package org.training.user.service.exception;
 
-public class ResourceConflictException extends GlobalException {
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.CONFLICT)
+public class ResourceConflictException extends RuntimeException {
 
     public ResourceConflictException() {
         super("Resource already present on the server!!!");
