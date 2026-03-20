@@ -3,6 +3,7 @@ package org.training.account.service.configuration;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -26,9 +27,10 @@ public class FeignClientErrorDecoder {
     @RabbitListener(queues = "${rabbitmq.queue.name}")
     public Exception decode(@Header(AmqpHeaders.RECEIVED_ROUTING_KEY) String routingKey,
                             @Header(AmqpHeaders.RECEIVED_DELIVERY_MODE) Integer deliveryMode,
-                            String message) {
+                            Message message) {
 
-        GlobalException globalException = extractGlobalException(message);
+        String jsonString = new String(message.getBody(), StandardCharsets.UTF_8);
+        GlobalException globalException = extractGlobalException(jsonString);
 
         log.info("Received message with routing key: {} and delivery mode: {}", routingKey, deliveryMode);
         if (deliveryMode != null && deliveryMode == 2) { // Assuming 2 means persistent

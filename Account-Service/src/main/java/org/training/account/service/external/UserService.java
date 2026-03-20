@@ -1,21 +1,34 @@
 package org.training.account.service.external;
 
-import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.training.account.service.configuration.FeignConfiguration;
 import org.training.account.service.model.dto.external.UserDto;
 
-@FeignClient(name = "user-service", configuration = FeignConfiguration.class)
-public interface UserService {
+@Configuration
+public class UserService {
 
-    /**
-     * Retrieves a user by their ID.
-     *
-     * @param userId the ID of the user to retrieve
-     * @return a ResponseEntity containing the user DTO if found, or an empty body with a not found status code
-     */
-    @GetMapping("/api/users/{userId}")
-    ResponseEntity<UserDto> readUserById(@PathVariable Long userId);
+    public static final String USER_QUEUE = "user.queue";
+
+    @Bean
+    public Queue userQueue() {
+        return new Queue(USER_QUEUE, false);
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(new Jackson2JsonMessageConverter());
+        return template;
+    }
+
+    public ResponseEntity<UserDto> readUserById(Long userId) {
+        // Implementation would involve sending a message to RabbitMQ queue
+        // and awaiting response via a callback or direct response mechanism
+        return null;
+    }
 }

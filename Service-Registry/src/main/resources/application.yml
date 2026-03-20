@@ -11,3 +11,27 @@ eureka:
 spring:
   application:
     name: SERVICE-REGISTRY
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  cloud:
+    stream:
+      bindings:
+        input:
+          destination: test-topic
+          content-type: application/json
+        output:
+          destination: test-topic
+          content-type: application/json
+      rabbit:
+        bindings:
+          input:
+            consumer:
+              auto-bind-declare: true
+          output:
+            producer:
+              auto-bind-declare: true
+  main:
+    allow-bean-definition-overriding: true
