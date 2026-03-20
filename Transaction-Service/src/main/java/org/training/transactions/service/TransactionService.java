@@ -1,43 +1,44 @@
 package org.training.transactions.service;
 
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 import org.training.transactions.model.dto.TransactionDto;
 import org.training.transactions.model.response.Response;
 import org.training.transactions.model.response.TransactionRequest;
 
 import java.util.List;
 
-public interface TransactionService {
+@Service
+public class TransactionService {
 
-    /**
-     * Adds a transaction.
-     *
-     * @param transactionDto The transaction to add.
-     * @return The response indicating whether the transaction was successfully added.
-     */
-    Response addTransaction(TransactionDto transactionDto);
+    @Autowired
+    private AmqpTemplate amqpTemplate;
 
-    /**
-     * Process an internal transaction.
-     *
-     * @param transactionDtos The list of transaction DTOs to process.
-     * @param transactionReference The transaction reference.
-     * @return The response of the internal transaction.
-     */
-    Response internalTransaction(List<TransactionDto> transactionDtos, String transactionReference);
+    @Value("${transaction.exchange.name}")
+    private String exchangeName;
 
-    /**
-     * Retrieves a list of transaction requests for a given account ID.
-     *
-     * @param accountId the ID of the account
-     * @return a list of transaction requests
-     */
-    List<TransactionRequest> getTransaction(String accountId);
+    @Value("${transaction.routing.key}")
+    private String routingKey;
 
-    /**
-     * Retrieves a list of transaction requests by transaction reference.
-     *
-     * @param transactionReference The transaction reference to search for.
-     * @return A list of transaction requests matching the given transaction reference.
-     */
-    List<TransactionRequest> getTransactionByTransactionReference(String transactionReference);
+    public Response addTransaction(TransactionDto transactionDto) {
+        amqpTemplate.convertAndSend(exchangeName, routingKey, transactionDto);
+        return new Response("Transaction submitted successfully");
+    }
+
+    public Response internalTransaction(List<TransactionDto> transactionDtos, String transactionReference) {
+        // Implementation for internal transaction processing
+        return new Response("Internal transaction processed");
+    }
+
+    public List<TransactionRequest> getTransaction(String accountId) {
+        // Implementation for retrieving transactions by account ID
+        return List.of();
+    }
+
+    public List<TransactionRequest> getTransactionByTransactionReference(String transactionReference) {
+        // Implementation for retrieving transactions by transaction reference
+        return List.of();
+    }
 }

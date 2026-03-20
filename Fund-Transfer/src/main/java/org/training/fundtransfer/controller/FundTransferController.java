@@ -1,6 +1,7 @@
 package org.training.fundtransfer.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.util.List;
 public class FundTransferController {
 
     private final FundTransferService fundTransferService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Handles the fund transfer request.
@@ -26,7 +28,9 @@ public class FundTransferController {
      */
     @PostMapping
     public ResponseEntity<FundTransferResponse> fundTransfer(@RequestBody FundTransferRequest fundTransferRequest) {
-        return new ResponseEntity<>(fundTransferService.fundTransfer(fundTransferRequest), HttpStatus.CREATED);
+        FundTransferResponse response = fundTransferService.fundTransfer(fundTransferRequest);
+        rabbitTemplate.convertAndSend("fund.transfer.exchange", "fund.transfer.routing.key", response);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     /**

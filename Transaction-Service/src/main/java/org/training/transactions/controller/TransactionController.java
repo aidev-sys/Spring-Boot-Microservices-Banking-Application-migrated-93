@@ -2,6 +2,7 @@ package org.training.transactions.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Add transactions to the system.
@@ -28,6 +30,7 @@ public class TransactionController {
      */
     @PostMapping
     public ResponseEntity<Response> addTransactions(@RequestBody TransactionDto transactionDto) {
+        rabbitTemplate.convertAndSend("transaction.exchange", "transaction.routing.key", transactionDto);
         return new ResponseEntity<>(transactionService.addTransaction(transactionDto), HttpStatus.CREATED);
     }
 
@@ -40,6 +43,7 @@ public class TransactionController {
      */
     @PostMapping("/internal")
     public ResponseEntity<Response> makeInternalTransaction(@RequestBody List<TransactionDto> transactionDtos,@RequestParam String transactionReference) {
+        rabbitTemplate.convertAndSend("internal.transaction.exchange", "internal.transaction.routing.key", transactionDtos);
         return new ResponseEntity<>(transactionService.internalTransaction(transactionDtos, transactionReference), HttpStatus.CREATED);
     }
 

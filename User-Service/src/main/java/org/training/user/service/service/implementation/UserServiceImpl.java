@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final KeycloakService keycloakService;
     private final AccountService accountService;
+    private final RabbitTemplate rabbitTemplate;
 
     private UserMapper userMapper = new UserMapper();
 
@@ -97,6 +99,10 @@ public class UserServiceImpl implements UserService {
                     .identificationNumber(UUID.randomUUID().toString()).build();
 
             userRepository.save(user);
+            
+            // Send message to RabbitMQ
+            rabbitTemplate.convertAndSend("user.created.exchange", "user.created.routing.key", userDto);
+
             return Response.builder()
                     .responseMessage("User created successfully")
                     .responseCode(responseCodeSuccess).build();
@@ -176,6 +182,9 @@ public class UserServiceImpl implements UserService {
         user.setStatus(userUpdate.getStatus());
         userRepository.save(user);
 
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend("user.status.updated.exchange", "user.status.updated.routing.key", user);
+
         return Response.builder()
                 .responseMessage("User updated successfully")
                 .responseCode(responseCodeSuccess).build();
@@ -213,6 +222,9 @@ public class UserServiceImpl implements UserService {
         user.setContactNo(userUpdate.getContactNo());
         BeanUtils.copyProperties(userUpdate, user.getUserProfile());
         userRepository.save(user);
+
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend("user.updated.exchange", "user.updated.routing.key", user);
 
         return Response.builder()
                 .responseCode(responseCodeSuccess)

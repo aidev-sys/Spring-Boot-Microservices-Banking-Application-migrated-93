@@ -2,6 +2,7 @@ package org.training.user.service.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Creates a new user.
@@ -31,7 +33,9 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<Response> createUser(@RequestBody CreateUser userDto) {
         log.info("creating user with: {}", userDto.toString());
-        return ResponseEntity.ok(userService.createUser(userDto));
+        Response response = userService.createUser(userDto);
+        rabbitTemplate.convertAndSend("user.created", response);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -66,7 +70,9 @@ public class UserController {
     @PatchMapping("/{id}")
     public ResponseEntity<Response> updateUserStatus(@PathVariable Long id, @RequestBody UserUpdateStatus userUpdate) {
         log.info("updating the user with: {}", userUpdate.toString());
-        return new ResponseEntity<>(userService.updateUserStatus(id, userUpdate), HttpStatus.OK);
+        Response response = userService.updateUserStatus(id, userUpdate);
+        rabbitTemplate.convertAndSend("user.status.updated", response);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     /**
@@ -78,7 +84,9 @@ public class UserController {
      */
     @PutMapping("{id}")
     public ResponseEntity<Response> updateUser(@PathVariable Long id, @RequestBody UserUpdate userUpdate) {
-        return new ResponseEntity<>(userService.updateUser(id, userUpdate), HttpStatus.OK);
+        Response response = userService.updateUser(id, userUpdate);
+        rabbitTemplate.convertAndSend("user.updated", response);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     /**

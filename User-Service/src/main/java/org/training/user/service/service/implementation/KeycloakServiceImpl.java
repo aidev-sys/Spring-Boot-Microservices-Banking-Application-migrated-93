@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.training.user.service.config.KeyCloakManager;
 import org.training.user.service.service.KeycloakService;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 public class KeycloakServiceImpl implements KeycloakService {
 
     private final KeyCloakManager keyCloakManager;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Creates a new user in the KeyCloak system.
@@ -25,7 +27,8 @@ public class KeycloakServiceImpl implements KeycloakService {
      */
     @Override
     public Integer createUser(UserRepresentation userRepresentation) {
-
+        // Send message to RabbitMQ queue
+        rabbitTemplate.convertAndSend("user.created", userRepresentation);
         return keyCloakManager.getKeyCloakInstanceWithRealm().users().create(userRepresentation).getStatus();
     }
 
@@ -37,7 +40,6 @@ public class KeycloakServiceImpl implements KeycloakService {
      */
     @Override
     public List<UserRepresentation> readUserByEmail(String emailId) {
-
         return keyCloakManager.getKeyCloakInstanceWithRealm().users().search(emailId);
     }
 
@@ -49,7 +51,6 @@ public class KeycloakServiceImpl implements KeycloakService {
      */
     @Override
     public List<UserRepresentation> readUsers(List<String> authIds) {
-
         return authIds.stream().map(authId -> {
             UserResource usersResource = keyCloakManager.getKeyCloakInstanceWithRealm().users().get(authId);
             return usersResource.toRepresentation();
@@ -64,9 +65,7 @@ public class KeycloakServiceImpl implements KeycloakService {
      */
     @Override
     public UserRepresentation readUser(String authId) {
-
         UsersResource userResource = keyCloakManager.getKeyCloakInstanceWithRealm().users();
-
         return userResource.get(authId).toRepresentation();
     }
 
@@ -77,8 +76,9 @@ public class KeycloakServiceImpl implements KeycloakService {
      */
     @Override
     public void updateUser(UserRepresentation userRepresentation) {
-
         keyCloakManager.getKeyCloakInstanceWithRealm().users()
                 .get(userRepresentation.getId()).update(userRepresentation);
+        // Send message to RabbitMQ exchange
+        rabbitTemplate.convertAndSend("user.updated", userRepresentation);
     }
 }

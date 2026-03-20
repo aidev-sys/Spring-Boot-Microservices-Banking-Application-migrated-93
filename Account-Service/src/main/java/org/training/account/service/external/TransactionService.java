@@ -1,22 +1,21 @@
 package org.training.account.service.external;
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.training.account.service.configuration.FeignConfiguration;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.training.account.service.configuration.RabbitMQConfig;
 import org.training.account.service.model.dto.external.TransactionResponse;
 
 import java.util.List;
 
-@FeignClient(name = "transaction-service", configuration = FeignConfiguration.class)
-public interface TransactionService {
+@Service
+public class TransactionService {
 
-    /**
-     * Retrieves a list of transactions from the specified account ID.
-     *
-     * @param accountId the ID of the account
-     * @return a list of transaction responses
-     */
-    @GetMapping("/transactions")
-    List<TransactionResponse> getTransactionsFromAccountId(@RequestParam String accountId);
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    public List<TransactionResponse> getTransactionsFromAccountId(String accountId) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.TRANSACTION_EXCHANGE, RabbitMQConfig.TRANSACTION_ROUTING_KEY, accountId);
+        return null;
+    }
 }

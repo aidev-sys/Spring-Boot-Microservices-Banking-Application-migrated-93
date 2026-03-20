@@ -1,12 +1,20 @@
 package org.training.fundtransfer.model.mapper;
 
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Component;
 import org.training.fundtransfer.model.dto.FundTransferDto;
 import org.training.fundtransfer.model.entity.FundTransfer;
 
 import java.util.Objects;
 
+@Component
 public class FundTransferMapper extends BaseMapper<FundTransfer, FundTransferDto> {
+
+    private final Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();
 
     /**
      * Converts a FundTransferDto object to a FundTransfer entity.
@@ -40,5 +48,13 @@ public class FundTransferMapper extends BaseMapper<FundTransfer, FundTransferDto
             BeanUtils.copyProperties(entity, fundTransferDto);
         }
         return fundTransferDto;
+    }
+
+    public Message toMessage(FundTransferDto dto) {
+        return messageConverter.toMessage(dto, new MessageProperties());
+    }
+
+    public FundTransferDto fromMessage(Message message) {
+        return (FundTransferDto) messageConverter.fromMessage(message);
     }
 }

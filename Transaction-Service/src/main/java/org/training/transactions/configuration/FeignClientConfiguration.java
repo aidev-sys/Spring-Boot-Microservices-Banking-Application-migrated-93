@@ -1,20 +1,41 @@
 package org.training.transactions.configuration;
 
-import feign.codec.ErrorDecoder;
-import org.springframework.cloud.openfeign.FeignClientProperties;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class FeignClientConfiguration extends FeignClientProperties.FeignClientConfiguration {
+public class FeignClientConfiguration {
 
-    /**
-     * Returns an instance of ErrorDecoder that will be used to decode errors returned by Feign clients.
-     *
-     * @return the ErrorDecoder instance
-     */
+    public static final String TRANSACTION_QUEUE = "transaction.queue";
+    public static final String TRANSACTION_EXCHANGE = "transaction.exchange";
+    public static final String TRANSACTION_ROUTING_KEY = "transaction.routing.key";
+
     @Bean
-    public ErrorDecoder errorDecoder() {
-        return new FeignClientErrorDecoder();
+    public Queue transactionQueue() {
+        return new Queue(TRANSACTION_QUEUE);
+    }
+
+    @Bean
+    public DirectExchange transactionExchange() {
+        return new DirectExchange(TRANSACTION_EXCHANGE);
+    }
+
+    @Bean
+    public Binding transactionBinding(Queue transactionQueue, DirectExchange transactionExchange) {
+        return BindingBuilder.bind(transactionQueue).to(transactionExchange).with(TRANSACTION_ROUTING_KEY);
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(new Jackson2JsonMessageConverter());
+        return template;
     }
 }

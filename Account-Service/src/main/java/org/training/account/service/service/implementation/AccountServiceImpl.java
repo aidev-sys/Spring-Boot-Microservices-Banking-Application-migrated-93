@@ -2,6 +2,7 @@ package org.training.account.service.service.implementation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -37,12 +38,18 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final SequenceService sequenceService;
     private final TransactionService transactionService;
+    private final RabbitTemplate rabbitTemplate;
 
     private final AccountMapper accountMapper = new AccountMapper();
 
-
     @Value("${spring.application.ok}")
     private String success;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchangeName;
+
+    @Value("${rabbitmq.routing.key}")
+    private String routingKey;
 
     /**
      * Creates an account based on the provided accountDto.
@@ -67,14 +74,18 @@ public class AccountServiceImpl implements AccountService {
                 });
 
         Account account = accountMapper.convertToEntity(accountDto);
-        account.setAccountNumber(ACC_PREFIX + String.format("%07d",sequenceService.generateAccountNumber().getAccountNumber()));
+        account.setAccountNumber(ACC_PREFIX + String.format("%07d", sequenceService.generateAccountNumber().getAccountNumber()));
         account.setAccountStatus(AccountStatus.PENDING);
         account.setAvailableBalance(BigDecimal.valueOf(0));
         account.setAccountType(AccountType.valueOf(accountDto.getAccountType()));
         accountRepository.save(account);
+        
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend(exchangeName, routingKey, accountDto);
+        
         return Response.builder()
                 .responseCode(success)
-                .message(" Account created successfully").build();
+                .message("Account created successfully").build();
     }
 
     /**

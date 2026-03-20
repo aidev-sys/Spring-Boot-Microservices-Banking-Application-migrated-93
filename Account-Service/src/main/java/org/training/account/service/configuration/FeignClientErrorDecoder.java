@@ -2,70 +2,60 @@ package org.training.account.service.configuration;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.Response;
-import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.stereotype.Component;
 import org.training.account.service.exception.GlobalException;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 @Slf4j
-public class FeignClientErrorDecoder implements ErrorDecoder {
+@Component
+public class FeignClientErrorDecoder {
 
     /**
-     * Decode the response and return an Exception object.
+     * Handle the message and return an Exception object.
      *
-     * @param s        the response string
-     * @param response the HTTP response object
-     * @return an Exception object representing the decoded response
+     * @param message  the message string
+     * @param errorCode the error code from the message headers
+     * @return an Exception object representing the decoded message
      */
-    @Override
-    public Exception decode(String s, Response response) {
+    @RabbitListener(queues = "${rabbitmq.queue.name}")
+    public Exception decode(@Header(AmqpHeaders.RECEIVED_ROUTING_KEY) String routingKey,
+                            @Header(AmqpHeaders.RECEIVED_DELIVERY_MODE) Integer deliveryMode,
+                            String message) {
 
-        GlobalException globalException = extractGlobalException(response);
+        GlobalException globalException = extractGlobalException(message);
 
-        log.info("response status: "+response.status());
-        if (response.status() == 400) {
-            log.error("Error in request went through feign client: {}", globalException.getErrorMessage() + " - " + globalException.getErrorCode());
+        log.info("Received message with routing key: {} and delivery mode: {}", routingKey, deliveryMode);
+        if (deliveryMode != null && deliveryMode == 2) { // Assuming 2 means persistent
+            log.error("Error in request went through RabbitMQ: {}", globalException.getErrorMessage() + " - " + globalException.getErrorCode());
             return globalException;
         }
-        log.error("general exception went through feign client");
+        log.error("General exception went through RabbitMQ");
         return new Exception();
     }
 
     /**
-     * Extracts a GlobalException object from the response.
+     * Extracts a GlobalException object from the message.
      *
-     * @param response The response object containing the exception information
-     * @return The GlobalException object extracted from the response, or null if extraction fails
+     * @param message The message string containing the exception information
+     * @return The GlobalException object extracted from the message, or null if extraction fails
      */
-    private GlobalException extractGlobalException(Response response) {
+    private GlobalException extractGlobalException(String message) {
 
         GlobalException globalException = null;
-        Reader reader = null;
 
         try {
-            reader = response.body().asReader(StandardCharsets.UTF_8);
-            String result = IOUtils.toString(reader);
-            log.error(result);
             ObjectMapper mapper = new ObjectMapper();
             mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-            globalException = mapper.readValue(result, GlobalException.class);
+            globalException = mapper.readValue(message, GlobalException.class);
             log.error(globalException.toString());
         } catch (IOException e) {
             log.error("IO Exception while reading exception message", e);
-        } finally {
-            if (!Objects.isNull(reader)){
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    log.error("IO Exception while reading exception message", e);
-                }
-            }
         }
         return globalException;
     }

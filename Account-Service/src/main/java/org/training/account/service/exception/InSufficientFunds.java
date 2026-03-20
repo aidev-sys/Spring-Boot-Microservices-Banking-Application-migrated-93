@@ -1,6 +1,9 @@
 package org.training.account.service.exception;
 
-public class InSufficientFunds extends GlobalException{
+import org.training.common.exception.GlobalErrorCode;
+import org.training.common.exception.GlobalException;
+
+public class InSufficientFunds extends GlobalException {
     public InSufficientFunds() {
         super("Insufficient funds", GlobalErrorCode.NOT_FOUND);
     }

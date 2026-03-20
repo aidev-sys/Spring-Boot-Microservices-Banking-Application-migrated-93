@@ -2,6 +2,7 @@ package org.training.fundtransfer.service.implementation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class FundTransferServiceImpl implements FundTransferService {
     private final AccountService accountService;
     private final FundTransferRepository fundTransferRepository;
     private final TransactionService transactionService;
+    private final RabbitTemplate rabbitTemplate;
 
     @Value("${spring.application.ok}")
     private String ok;
@@ -121,7 +123,7 @@ public class FundTransferServiceImpl implements FundTransferService {
                         .description("Internal fund transfer received from: "+fromAccount.getAccountNumber()).build());
 
         String transactionReference = UUID.randomUUID().toString();
-        transactionService.makeInternalTransactions(transactions, transactionReference);
+        rabbitTemplate.convertAndSend("transaction.exchange", "transaction.routing.key", transactions);
         return transactionReference;
     }
 

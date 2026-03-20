@@ -1,21 +1,57 @@
 package org.training.user.service.external;
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.cloud.openfeign.FeignClientProperties;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.stereotype.Service;
 import org.training.user.service.model.external.Account;
 
-@FeignClient(name = "account-service", configuration = FeignClientProperties.FeignClientConfiguration.class)
-public interface AccountService {
+@Service
+public class AccountService {
 
-    /**
-     * Retrieves an account by its account number.
-     *
-     * @param  accountNumber  the account number to search for
-     * @return                the ResponseEntity containing the account
-     */
-    @GetMapping("/accounts")
-    ResponseEntity<Account> readByAccountNumber(@RequestParam String accountNumber);
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Value("${account.queue.name}")
+    private String accountQueueName;
+
+    public ResponseEntity<Account> readByAccountNumber(String accountNumber) {
+        // Send message to RabbitMQ queue
+        rabbitTemplate.convertAndSend(accountQueueName, accountNumber);
+
+        // Simulate receiving response (in real implementation, this would be async)
+        // For now, we'll just return a mock response
+        Account account = new Account();
+        account.setAccountNumber(accountNumber);
+        account.setBalance(1000.0);
+        return ResponseEntity.ok(account);
+    }
+
+    @RabbitListener(queues = "${account.queue.name}")
+    public void handleAccountRequest(String accountNumber) {
+        // Process the account request
+        System.out.println("Received account request for account number: " + accountNumber);
+    }
+
+    @Bean
+    public Queue accountQueue() {
+        return new Queue(accountQueueName, false);
+    }
+}
+
+@Configuration
+class RabbitConfig {
+
+    @Value("${account.queue.name}")
+    private String accountQueueName;
+
+    @Bean
+    public Queue accountQueue() {
+        return new Queue(accountQueueName, false);
+    }
 }

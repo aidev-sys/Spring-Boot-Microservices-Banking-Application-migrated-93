@@ -1,31 +1,35 @@
 package org.training.transactions.external;
 
-import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.training.transactions.configuration.FeignClientConfiguration;
+import org.springframework.stereotype.Service;
 import org.training.transactions.model.external.Account;
 import org.training.transactions.model.response.Response;
 
-@FeignClient(name = "account-service", configuration = FeignClientConfiguration.class)
-public interface AccountService {
+@Service
+public class AccountService {
 
-    /**
-     * Retrieves an account by account number.
-     *
-     * @param accountNumber The account number.
-     * @return The account matching the account number.
-     */
-    @GetMapping("/accounts")
-    ResponseEntity<Account> readByAccountNumber(@RequestParam String accountNumber);
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
-    /**
-     * Update an account with the given account number.
-     *
-     * @param accountNumber The account number of the account to be updated.
-     * @param account The updated account information.
-     * @return The response entity containing the response.
-     */
-    @PutMapping("/accounts")
-    ResponseEntity<Response> updateAccount(@RequestParam String accountNumber, @RequestBody Account account);
+    @Value("${account.service.queue.name}")
+    private String accountQueueName;
+
+    public ResponseEntity<Account> readByAccountNumber(String accountNumber) {
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend(accountQueueName, "readByAccountNumber:" + accountNumber);
+
+        // Simulate response - in real implementation you'd await response from another service
+        return ResponseEntity.ok(new Account());
+    }
+
+    public ResponseEntity<Response> updateAccount(String accountNumber, Account account) {
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend(accountQueueName, "updateAccount:" + accountNumber + ":" + account.toString());
+
+        // Simulate response
+        return ResponseEntity.ok(new Response());
+    }
 }

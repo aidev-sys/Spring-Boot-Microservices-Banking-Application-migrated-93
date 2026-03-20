@@ -9,13 +9,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class GlobalException extends RuntimeException{
+public class GlobalException extends RuntimeException {
 
     private String errorCode;
-
     private String message;
 
     public GlobalException(String message) {
+        super(message);
         this.message = message;
     }
 }

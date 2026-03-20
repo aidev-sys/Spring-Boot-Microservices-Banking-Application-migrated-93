@@ -6,6 +6,7 @@ import feign.Response;
 import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.training.fundtransfer.exception.GlobalException;
 
 import java.io.IOException;
@@ -16,21 +17,20 @@ import java.util.Objects;
 @Slf4j
 public class FeignClientErrorDecoder implements ErrorDecoder {
 
-    /**
-     * Decodes the HTTP response and returns an exception if necessary.
-     *
-     * @param s        The string representation of the response body.
-     * @param response The HTTP response object.
-     * @return An exception object if necessary, or null if no exception is thrown.
-     */
+    private final RabbitTemplate rabbitTemplate;
+
+    public FeignClientErrorDecoder(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
     @Override
     public Exception decode(String s, Response response) {
-
         GlobalException globalException = extractGlobalException(response);
 
         switch (response.status()) {
             case 400 -> {
                 log.error(globalException.getErrorCode() + " - " + globalException.getMessage());
+                rabbitTemplate.convertAndSend("error.exchange", "error.routing.key", globalException);
                 return globalException;
             }
             default -> {
@@ -40,14 +40,7 @@ public class FeignClientErrorDecoder implements ErrorDecoder {
         }
     }
 
-    /**
-     * Extracts a GlobalException object from a Response object
-     *
-     * @param response The Response object to extract the GlobalException from
-     * @return The extracted GlobalException object, or null if extraction fails
-     */
     private GlobalException extractGlobalException(Response response) {
-
         GlobalException globalException = null;
         Reader reader = null;
 
@@ -61,9 +54,8 @@ public class FeignClientErrorDecoder implements ErrorDecoder {
             log.error(globalException.toString());
         } catch (IOException e) {
             log.error("IO Exception while reading the global exception", e);
-        }
-        finally {
-            if(!Objects.isNull(reader)){
+        } finally {
+            if (!Objects.isNull(reader)) {
                 try {
                     reader.close();
                 } catch (IOException e) {

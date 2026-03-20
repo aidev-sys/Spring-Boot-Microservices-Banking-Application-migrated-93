@@ -2,41 +2,57 @@ package org.training.user.service.config;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.Response;
-import feign.codec.ErrorDecoder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.training.user.service.exception.GlobalException;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 @Slf4j
-public class FeignClientErrorDecoder implements ErrorDecoder {
+public class FeignClientErrorDecoder {
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     /**
-     * Overrides the decode method to handle exception decoding.
+     * Handles exception decoding and sends it to RabbitMQ.
      *
-     * @param s        The string being decoded.
      * @param response The response from the server.
      * @return The decoded exception.
      */
-    @Override
-    public Exception decode(String s, Response response) {
+    public Exception decode(Response response) {
 
         GlobalException globalException = extractGlobalException(response);
 
         switch (response.status()) {
             case 400 -> {
                 log.error("global exception is handled by feign client");
+                sendToRabbitMQ(globalException);
                 return globalException;
             }
             default -> {
                 log.error("common exception thrown");
                 return new Exception();
             }
+        }
+    }
+
+    /**
+     * Sends the global exception to RabbitMQ.
+     *
+     * @param globalException The exception to send.
+     */
+    private void sendToRabbitMQ(GlobalException globalException) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+            String jsonMessage = mapper.writeValueAsString(globalException);
+            rabbitTemplate.convertAndSend("exception.exchange", "exception.routing.key", jsonMessage);
+        } catch (IOException e) {
+            log.error("Error serializing exception to JSON", e);
         }
     }
 

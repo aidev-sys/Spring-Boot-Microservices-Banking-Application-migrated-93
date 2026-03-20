@@ -1,20 +1,41 @@
 package org.training.fundtransfer.configuration;
 
-import feign.codec.ErrorDecoder;
-import org.springframework.cloud.openfeign.FeignClientProperties;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class FeignClientConfiguration extends FeignClientProperties.FeignClientConfiguration {
+public class FeignClientConfiguration {
 
-    /**
-     * Returns the error decoder for the Feign client.
-     *
-     * @return the error decoder
-     */
+    public static final String EXCHANGE_NAME = "fund.transfer.exchange";
+    public static final String QUEUE_NAME = "fund.transfer.queue";
+    public static final String ROUTING_KEY = "fund.transfer.routing.key";
+
     @Bean
-    public ErrorDecoder errorDecoder() {
-        return new FeignClientErrorDecoder();
+    public DirectExchange exchange() {
+        return new DirectExchange(EXCHANGE_NAME);
+    }
+
+    @Bean
+    public Queue queue() {
+        return new Queue(QUEUE_NAME);
+    }
+
+    @Bean
+    public Binding binding(DirectExchange exchange, Queue queue) {
+        return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(new Jackson2JsonMessageConverter());
+        return template;
     }
 }

@@ -1,6 +1,6 @@
 package org.training.account.service.exception;
 
-public class ResourceConflict extends GlobalException{
+public class ResourceConflict extends GlobalException {
 
     public ResourceConflict() {
         super("Account already exists", GlobalErrorCode.CONFLICT);

@@ -2,6 +2,7 @@ package org.training.account.service.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ import java.util.List;
 public class AccountController {
 
     private final AccountService accountService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Create an account using the provided accountDto
@@ -29,6 +31,7 @@ public class AccountController {
      */
     @PostMapping
     public ResponseEntity<Response> createAccount(@RequestBody AccountDto accountDto) {
+        rabbitTemplate.convertAndSend("account.created", accountDto);
         return new ResponseEntity<>(accountService.createAccount(accountDto), HttpStatus.CREATED);
     }
 
@@ -41,6 +44,7 @@ public class AccountController {
      */
     @PatchMapping
     public ResponseEntity<Response> updateAccountStatus(@RequestParam String accountNumber,@RequestBody AccountStatusUpdate accountStatusUpdate) {
+        rabbitTemplate.convertAndSend("account.status.updated", accountStatusUpdate);
         return ResponseEntity.ok(accountService.updateStatus(accountNumber, accountStatusUpdate));
     }
 
@@ -64,6 +68,7 @@ public class AccountController {
      */
     @PutMapping
     public ResponseEntity<Response> updateAccount(@RequestParam String accountNumber, @RequestBody AccountDto accountDto) {
+        rabbitTemplate.convertAndSend("account.updated", accountDto);
         return ResponseEntity.ok(accountService.updateAccount(accountNumber, accountDto));
     }
 
@@ -97,6 +102,7 @@ public class AccountController {
      */
     @PutMapping("/closure")
     public ResponseEntity<Response> closeAccount(@RequestParam String accountNumber) {
+        rabbitTemplate.convertAndSend("account.closed", accountNumber);
         return ResponseEntity.ok(accountService.closeAccount(accountNumber));
     }
 
@@ -109,16 +115,5 @@ public class AccountController {
     @GetMapping("/{userId}")
     public ResponseEntity<AccountDto> readAccountByUserId(@PathVariable Long userId){
         return ResponseEntity.ok(accountService.readAccountByUserId(userId));
-
-
-
-
-
-
-
-
-
-
-
     }
 }

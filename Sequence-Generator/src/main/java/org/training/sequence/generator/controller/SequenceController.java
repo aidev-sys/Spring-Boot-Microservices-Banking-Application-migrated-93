@@ -1,6 +1,7 @@
 package org.training.sequence.generator.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +14,7 @@ import org.training.sequence.generator.service.SequenceService;
 public class SequenceController {
 
     private final SequenceService sequenceService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Generates an account number.
@@ -21,6 +23,8 @@ public class SequenceController {
      */
     @PostMapping
     public Sequence generateAccountNumber() {
-        return sequenceService.create();
+        Sequence sequence = sequenceService.create();
+        rabbitTemplate.convertAndSend("sequence.exchange", "sequence.routing.key", sequence);
+        return sequence;
     }
 }

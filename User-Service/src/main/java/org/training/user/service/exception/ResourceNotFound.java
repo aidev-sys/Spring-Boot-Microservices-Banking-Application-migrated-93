@@ -1,12 +1,16 @@
 package org.training.user.service.exception;
 
-public class ResourceNotFound extends GlobalException{
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class ResourceNotFound extends RuntimeException {
 
     public ResourceNotFound() {
-        super("Resource not found on the server", GlobalError.NOT_FOUND);
+        super("Resource not found on the server");
     }
 
     public ResourceNotFound(String message) {
-        super(message, GlobalError.NOT_FOUND);
+        super(message);
     }
 }

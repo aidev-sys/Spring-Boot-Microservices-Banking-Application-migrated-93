@@ -2,6 +2,7 @@ package org.training.transactions.service.implementation;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountService accountService;
+    private final RabbitTemplate rabbitTemplate;
 
     private final TransactionMapper transactionMapper = new TransactionMapper();
 
@@ -81,6 +83,9 @@ public class TransactionServiceImpl implements TransactionService {
         accountService.updateAccount(transactionDto.getAccountId(), account);
         transactionRepository.save(transaction);
 
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend("transaction.completed", transaction);
+
         return Response.builder()
                 .message("Transaction completed successfully")
                 .responseCode(ok).build();
@@ -108,6 +113,9 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Save all the completed transactions to the transaction repository
         transactionRepository.saveAll(transactions);
+
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend("transaction.completed", transactions);
 
         // Return the response indicating the completion of the transaction
         return Response.builder()
